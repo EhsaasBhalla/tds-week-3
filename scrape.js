@@ -1,29 +1,33 @@
-name: Table Sum Scraper
+const { chromium } = require('@playwright/test');
 
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+const seeds = [50, 51, 52, 53, 54, 55, 56, 57, 58, 59];
 
-jobs:
-  scrape-tables:
-    runs-on: ubuntu-latest
+async function main() {
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage();
 
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+  let total = 0;
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
+  for (const seed of seeds) {
+    const url = `https://sanand0.github.io/tdsdata/js_table/?seed=${seed}`;
+    await page.goto(url, { waitUntil: 'networkidle' });
 
-      - name: Install dependencies
-        run: npm ci
+    await page.waitForSelector('table', { timeout: 10000 });
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+    const texts = await page.$$eval('table tr td', (cells) =>
+      cells.map((cell) => cell.textContent.trim())
+    );
 
-      - name: 23f3002949@ds.study.iitm.ac.in - Run Playwright table scraper
-        run: npm run scrape
+    for (const text of texts) {
+      const num = parseFloat(text);
+      if (!isNaN(num)) {
+        total += num;
+      }
+    }
+  }
+
+  console.log("Total sum of all numbers:", total);
+  await browser.close();
+}
+
+main().catch(console.error);
